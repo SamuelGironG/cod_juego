@@ -5,33 +5,92 @@ if (!isset($_SESSION['usuario_id'])) {
     exit();
 }
 require_once("../connect/conn.php");
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require '../vendor/autoload.php';
+
 $db = new Database();
 $pdo = $db->conectar();
 
 if ($pdo === null) {
     die("Error de conexión a la base de datos");
 }
+
+function enviarCorreoActivacion(string $correo, string $nombre)
+{
+    if (empty($correo)) return;
+    $mail = new PHPMailer(true);
+    try {
+
+        $mail->isSMTP();
+        $mail->Host       = "smtp.gmail.com";
+        $mail->SMTPAuth   = true;
+        $mail->Username   = "codjuego1011@gmail.com";
+        $mail->Password   = "vrub zgfv bytk hayj";
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+
+        $mail->setFrom('sampruebas2013@gmail.com', 'Administracion del Juego');
+        $mail->addAddress($correo, $nombre);
+
+        // Contenido del correo
+        $mail->isHTML(true);
+        $mail->Subject = '¡Tu cuenta ha sido activada!';
+        $mail->Body    = "Hola <b>$nombre</b>,<br><br>Nos complace informarte que tu cuenta en el sistema ha sido <b>activada exitosamente</b>. Ya puedes ingresar y disfrutar del juego.<br><br>¡Te esperamos en el campo de batalla!";
+        $mail->AltBody = "Hola $nombre, nos complace informarte que tu cuenta ha sido activada exitosamente.";
+
+        $mail->send();
+    } catch (Exception $e) {
+    }
+}
+
 $modulo = $_GET['modulo'] ?? 'dashboard';
 $accion = $_POST['accion'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($accion === 'crear_usuario') {
+        $nombre = $_POST['nombre_usuario'];
+        $correo = $_POST['correo_usuario'];
+        $estado = $_POST['estado_usuario'];
+
         $stmt = $pdo->prepare("INSERT INTO usuario (nombre_usuario, correo_usuario, password, estado_usuario, id_rol, id_nivel) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$_POST['nombre_usuario'], $_POST['correo_usuario'], $_POST['password'], $_POST['estado_usuario'], $_POST['id_rol'], $_POST['id_nivel']]);
-        header('Location: ?modulo=usuarios');
-        exit;
-    }
-    if ($accion === 'actualizar_usuario') {
-        if (!empty($_POST['password'])) {
-            $stmt = $pdo->prepare("UPDATE usuario SET nombre_usuario = ?, correo_usuario = ?, password = ?, estado_usuario = ?, id_rol = ?, id_nivel = ? WHERE id_usuario = ?");
-            $stmt->execute([$_POST['nombre_usuario'], $_POST['correo_usuario'], $_POST['password'], $_POST['estado_usuario'], $_POST['id_rol'], $_POST['id_nivel'], $_POST['id_usuario']]);
-        } else {
-            $stmt = $pdo->prepare("UPDATE usuario SET nombre_usuario = ?, correo_usuario = ?, estado_usuario = ?, id_rol = ?, id_nivel = ? WHERE id_usuario = ?");
-            $stmt->execute([$_POST['nombre_usuario'], $_POST['correo_usuario'], $_POST['estado_usuario'], $_POST['id_rol'], $_POST['id_nivel'], $_POST['id_usuario']]);
+        $stmt->execute([$nombre, $correo, $_POST['password'], $estado, $_POST['id_rol'], $_POST['id_nivel']]);
+        if ((int)$estado === 1) {
+            enviarCorreoActivacion($correo, $nombre);
         }
         header('Location: ?modulo=usuarios');
         exit;
     }
+    if ($accion === 'actualizar_usuario') {
+        $id_usuario = $_POST['id_usuario'];
+        $nombre = $_POST['nombre_usuario'];
+        $correo = $_POST['correo_usuario'];
+        $estado = $_POST['estado_usuario'];
+
+        $stmtCheck = $pdo->prepare("SELECT estado_usuario FROM usuario WHERE id_usuario = ?");
+        $stmtCheck->execute([$id_usuario]);
+        $usuarioAnterior = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        $estadoAnterior = $usuarioAnterior ? (int)$usuarioAnterior['estado_usuario'] : 0;
+
+        if (!empty($_POST['password'])) {
+            $stmt = $pdo->prepare("UPDATE usuario SET nombre_usuario = ?, correo_usuario = ?, password = ?, estado_usuario = ?, id_rol = ?, id_nivel = ? WHERE id_usuario = ?");
+            $stmt->execute([$nombre, $correo, $_POST['password'], $estado, $_POST['id_rol'], $_POST['id_nivel'], $id_usuario]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE usuario SET nombre_usuario = ?, correo_usuario = ?, estado_usuario = ?, id_rol = ?, id_nivel = ? WHERE id_usuario = ?");
+            $stmt->execute([$nombre, $correo, $estado, $_POST['id_rol'], $_POST['id_nivel'], $id_usuario]);
+        }
+
+        if ($estadoAnterior === 0 && (int)$estado === 1) {
+            enviarCorreoActivacion($correo, $nombre);
+        }
+
+        header('Location: ?modulo=usuarios');
+        exit;
+    }
+    
     if ($accion === 'crear_arma') {
         $nombre_imagen = '';
         if (isset($_FILES['imagen_arma']) && $_FILES['imagen_arma']['error'] === UPLOAD_ERR_OK) {

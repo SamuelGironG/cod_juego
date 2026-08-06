@@ -12,7 +12,6 @@ if ($pdo === null) {
     die("Error crítico: No se pudo establecer la conexión a la base de datos.");
 }
 
-// Forzar el modo de errores de PDO a excepciones para depurar cualquier fallo SQL
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $id_usuario = $_SESSION['usuario_id'];
@@ -898,36 +897,6 @@ if ($vida_usuario_actual <= 0) $usuario_derrotado = true;
         body {
             background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('../assets/img/<?= htmlspecialchars($imagen_fondo) ?>') no-repeat center center fixed !important;
             background-size: cover !important;
-        }
-
-        .btn-parte.seleccionado {
-            background-color: #3498db !important;
-            border-color: #2980b9 !important;
-            color: white !important;
-            box-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
-        }
-
-        .modal-fin-partida {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .modal-contenido-fin {
-            background: #1e1e1e;
-            border: 2px solid #f39c12;
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            max-width: 450px;
-            width: 90%;
-            box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
         }
     </style>
 </head>

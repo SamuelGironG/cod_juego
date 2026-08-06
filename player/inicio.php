@@ -88,22 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: ?modulo=perfil");
             exit();
         }
-    } elseif ($accion === 'actualizar_nombre') {
-        $nuevo_nombre = trim($_POST['nuevo_nombre'] ?? '');
-        $intentos_actuales = $usuario['cambios_nombre'] ?? $usuario['intentos_nombre'] ?? 0;
-
-        if (!empty($nuevo_nombre) && $intentos_actuales < 3) {
-            $nuevo_limite = $intentos_actuales + 1;
-            try {
-                $stmtUpdName = $pdo->prepare("UPDATE usuario SET nombre_usuario = ?, cambios_nombre = ? WHERE id_usuario = ?");
-                $stmtUpdName->execute([$nuevo_nombre, $nuevo_limite, $id_usuario]);
-            } catch (Exception $e) {
-                $stmtUpdName = $pdo->prepare("UPDATE usuario SET nombre_usuario = ?, intentos_nombre = ? WHERE id_usuario = ?");
-                $stmtUpdName->execute([$nuevo_nombre, $nuevo_limite, $id_usuario]);
-            }
-        }
-        header("Location: ?modulo=perfil");
-        exit();
     }
 }
 
@@ -153,7 +137,6 @@ usort($personajes_disponibles, function ($a, $b) {
 });
 
 $armas_disponibles = $pdo->query("SELECT a.*, c.nombre_clase FROM arma a JOIN clase_arma c ON a.clase_arma = c.id_clase ORDER BY FIELD(c.id_clase, 4, 1, 2, 3), a.nombre_arma ASC;")->fetchAll(PDO::FETCH_ASSOC);
-
 $avatares_usuario_disponibles = [];
 try {
     $avatares_usuario_disponibles = $pdo->query("SELECT * FROM avatar_usuario")->fetchAll(PDO::FETCH_ASSOC);
@@ -165,17 +148,14 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <title>Cuartel General</title>
     <link rel="stylesheet" href="../assets/estilos/style_inicio_player.css">
 </head>
-
 <body>
     <video autoplay muted loop id="bg-video">
         <source src="../assets/img/MW Beta (2019 Sep) Main Menu Screen Video file (main_menu.bik).mp4" type="video/mp4">
-        Tu navegador no soporta videos en segundo plano.
     </video>
 
     <div class="user-widget-top-container" style="display: flex; gap: 10px; align-items: center;">
@@ -193,9 +173,7 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
             <a href="?modulo=historial" class="btn-ver-perfil-top" style="text-align: center; text-decoration: none;">Historial</a>
         </div>
     </div>
-
     <div class="main-container">
-
         <?php if ($modulo === 'principal'):
             $stmt = $pdo->prepare("SELECT p.*, f.nombre_faccion FROM usuario u LEFT JOIN personaje p ON u.personaje_equipado = p.id_personaje LEFT JOIN facciones f ON p.faccion = f.id_faccion WHERE u.id_usuario = ? LIMIT 1");
             $stmt->execute([$id_usuario]);
@@ -261,7 +239,6 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
         <?php elseif ($modulo === 'lobby'): ?>
             <?php
             try {
-                // Consulta optimizada para verificar los usuarios activos en tiempo real por cada sala
                 $stmtSalasLlenas = $pdo->query(" 
                     SELECT s.id_sala, s.nombre_sala, s.capacidad_sala, s.id_mundo, s.estado_sala,
                     (SELECT COUNT(*) FROM partida p JOIN detalle_partida_usuario dpu ON p.id_partida = dpu.id_partida WHERE p.id_sala = s.id_sala AND dpu.activo = 1) AS total_activos
@@ -289,7 +266,6 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
                         'capacidad' => $capacidadMaxSala
                     ];
 
-                    // Actualizar estado dinámicamente si se llenó o si se desocupó tras un abandono
                     if ($activosEnSala >= $capacidadMaxSala) {
                         $stmtEstado = $pdo->prepare("UPDATE sala SET estado_sala = 2 WHERE id_sala = ?");
                         $stmtEstado->execute([$idSalaActual]);
@@ -299,7 +275,6 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
                     }
                 }
 
-                // Evaluar duplicación de salas llenas y eliminación de salas vacías excedentes
                 foreach ($contadorSalasPorNombre as $clave => $salasGrupo) {
                     list($nombreSala, $idMundo) = explode('_', $clave, 2);
                     
@@ -311,30 +286,25 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
                         }
                     }
 
-                    // Si todas las salas de este tipo se llenaron, creamos una nueva copia idéntica
                     if (!$haySalaLibre && count($salasGrupo) > 0) {
                         $capacidadReferencia = $salasGrupo[0]['capacidad'];
                         $stmtDuplicar = $pdo->prepare("INSERT INTO sala (nombre_sala, capacidad_sala, id_mundo, estado_sala) VALUES (?, ?, ?, 1)");
                         $stmtDuplicar->execute([$nombreSala, $capacidadReferencia, $idMundo]);
                     }
 
-                    // Si hay múltiples copias y alguna queda completamente vacía (0 usuarios), se elimina el exceso
                     if (count($salasGrupo) > 1) {
-                        // Ordenamos para priorizar borrar las salas que tengan 0 usuarios activos
                         usort($salasGrupo, function($a, $b) {
                             return $a['activos'] <=> $b['activos'];
                         });
 
                         foreach ($salasGrupo as $s) {
                             if ($s['activos'] == 0 && count($salasGrupo) > 1) {
-                                // Limpiar partida asociada antes de eliminar la sala por integridad
                                 $stmtDelPartida = $pdo->prepare("DELETE FROM partida WHERE id_sala = ?");
                                 $stmtDelPartida->execute([$s['id_sala']]);
 
                                 $stmtEliminarVacia = $pdo->prepare("DELETE FROM sala WHERE id_sala = ?");
                                 $stmtEliminarVacia->execute([$s['id_sala']]);
                                 
-                                // Reducir la cuenta del grupo actual para detener la eliminación en cascada
                                 array_shift($salasGrupo);
                             }
                         }
@@ -407,9 +377,7 @@ $avatar_usuario = (!empty($usuario['avatar'])) ? $usuario['avatar'] : 'default_a
                                     $bloqueadoNivelMayorEnSala = true;
                                 }
                             }
-
                             $bloqueadoSala = $bloqueadoNivel || !$puede_unirse_sala || $bloqueadoNivelMayorEnSala;
-
                             $capacidadMax = $sala['capacidad_sala'] ?? 5;
                             $usuariosActuales = $sala['usuarios_actuales'] ?? 0;
                             if ($usuariosActuales < 0) {

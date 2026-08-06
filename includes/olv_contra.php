@@ -1,53 +1,59 @@
 <?php
 session_start();
 
-include __DIR__ . '/../connect/conn.php';
-
-
+// Incluir la conexión PDO desde tu archivo conn.php
+require_once __DIR__ . '/../connect/conn.php';
 require '../vendor/autoload.php';
 
-
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-$smtp_host    = "smtp.gmail.com";
-$smtp_usuario = "sampruebas2013@gmail.com"; 
-$smtp_password = "bxta zari rrkw sndk";      
+$smtp_host     = "smtp.gmail.com";
+$smtp_usuario = "codjuego1011@gmail.com"; 
+$smtp_password = "vrub zgfv bytk hayj";      
 $smtp_puerto   = 587;
 $smtp_nombre   = "COD-Recuperar contraseña";          
 
-$mensaje = isset($_SESSION['mensaje']) ? $_SESSION['mensaje'] : "";
-$tipo_msg = isset($_SESSION['tipo_msg']) ? $_SESSION['tipo_msg'] : "";
+$mensaje = isset($_SESSION['mensaje']) ?$_SESSION['mensaje'] : "";
+$tipo_msg = isset($_SESSION['tipo_msg']) ?$_SESSION['tipo_msg'] : "";
 unset($_SESSION['mensaje']);
 unset($_SESSION['tipo_msg']);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = mysqli_real_escape_string($conn, $_POST['correo_usuario']);
-    $consulta = mysqli_query($conn, "SELECT id_usuario FROM usuario WHERE correo_usuario='$email'");
+    $email = trim($_POST['correo_usuario']);
 
-    if (mysqli_num_rows($consulta) == 1) {
-        $pin = rand(10000000, 99999999);
-        $expira = date("Y-m-d H:i:s", strtotime("+15 minutes"));
-        mysqli_query($conn, "UPDATE usuario SET token_recuperacion='$pin', token_expiracion='$expira' WHERE correo_usuario='$email'");
+    // Instanciar la clase Database y conectar mediante PDO
+    $database = new Database();
+    $pdo =$database->conectar();
+
+    // Consultar el usuario con PDO (PreparedStatement para mayor seguridad)
+    $stmt =$pdo->prepare("SELECT id_usuario FROM usuario WHERE correo_usuario = ?");
+    $stmt->execute([$email]);
+    $usuario =$stmt->fetch();
+
+    if ($usuario) {
+        $pin = rand(10000000, 99999999);$expira = date("Y-m-d H:i:s", strtotime("+15 minutes"));
+
+        // Actualizar el token usando PDO
+        $stmtUpdate =$pdo->prepare("UPDATE usuario SET token_recuperacion = ?, token_expiracion = ? WHERE correo_usuario = ?");
+        $stmtUpdate->execute([$pin, $expira,$email]);
 
         $mail = new PHPMailer(true);
 
         try {
             $mail->isSMTP();
-            $mail->Host       = $smtp_host;
+            $mail->Host       =$smtp_host;
             $mail->SMTPAuth   = true;
-            $mail->Username   = $smtp_usuario;
-            $mail->Password   = $smtp_password;
+            $mail->Username   =$smtp_usuario;
+            $mail->Password   =$smtp_password;
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = $smtp_puerto;
+            $mail->Port       =$smtp_puerto;
             $mail->CharSet    = 'UTF-8';
 
-            $mail->setFrom($smtp_usuario, $smtp_nombre);
+            $mail->setFrom($smtp_usuario,$smtp_nombre);
             $mail->addAddress($email);
 
-            $mail->isHTML(true);
-            $mail->Subject = "Código de recuperación de contraseña";
+            $mail->isHTML(true);$mail->Subject = "Código de recuperación de contraseña";
             $mail->Body    = "
                 <div style='font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background-color: #f4f6f9;'>
                 <div style='max-width: 420px; margin: auto; background: #ffffff; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); text-align: center;'>
@@ -66,19 +72,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             $_SESSION['mensaje'] = "PIN enviado correctamente a $email. Revisa tu bandeja de entrada (y spam).";
             $_SESSION['tipo_msg'] = "ok";
-            $_SESSION['email_recuperar'] = $email;
+            $_SESSION['email_recuperar'] =$email;
             header("Location: verificar_pin.php");
             exit;
-        } catch (Exception $e) {
-            $_SESSION['mensaje'] = "Error al enviar el correo: " . $mail->ErrorInfo;
+        } catch (Exception $e) {$_SESSION['mensaje'] = "Error al enviar el correo: " . $mail->ErrorInfo;
             $_SESSION['tipo_msg'] = "err";
-            header("Location: recuperar_con_email.php");
+            header("Location: olv_contra.php");
             exit;
         }
     } else {
         $_SESSION['mensaje'] = "El email no está registrado";
         $_SESSION['tipo_msg'] = "err";
-        header("Location: recuperar_con_email.php");
+        header("Location: olv_contra.php");
         exit;
     }
 }

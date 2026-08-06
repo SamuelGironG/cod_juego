@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn-login" id="btnLogin">Entrar</button>
             </form>
             <a href="../index.php">Volver al inicio</a>
-            <a href="contra_sol/olv_contra.php" style="font-size: 0.9em; color: orange; text-decoration: none;">¿Olvidaste tu contraseña?</a>
+            <a href="olv_contra.php" style="font-size: 0.9em; color: orange; text-decoration: none;">¿Olvidaste tu contraseña?</a>
             <a href="sign_up.php">¿No tienes cuenta? Registrate aqui</a>
         </div>
     </div>

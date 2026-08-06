@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <button type="submit" class="btn-login" id="btnLogin">Validar PIN</button>
             </form>
             <a href="new_pin.php" style="display: block; margin-top: 15px; color: orange;">Reenviar PIN</a>
-            <a href="recuperar_con_email.php" style="display: block; margin-top: 15px; color: orange;">Cambiar correo</a>
+            <a href="olv_contra.php" style="display: block; margin-top: 15px; color: orange;">Cambiar correo</a>
             <a href="login.php" style="display: block; margin-top: 15px; color: orange;">Volver al login</a>
         </div>
     </div>
